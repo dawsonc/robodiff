@@ -28,6 +28,9 @@ def get_model_dict(morphModel,
 def get_adam_optimizer(lr=0.01):
     return {'name':"Adam", 'lr':lr}
 
+def get_mala_optimizer(lr=1e-3, loss_scale=1.0):
+    return {'name':"MALA", 'lr':lr, 'loss_scale': loss_scale}
+
 def get_morph_rand_direct_circle_fixed_size(hole_count=1, optimize=True, holeSize=0.2,target_hole_area=None, max_hole_size=None):
     dict_to_return = get_morph_rand_direct_circle(hole_count=hole_count, optimize=optimize,target_hole_area=target_hole_area,max_hole_size=max_hole_size)
     del dict_to_return["genome"]["hole_size"]
@@ -104,7 +107,7 @@ def get_morph_direct_circle(hole_x=[0.124],
                 },
                 **kwargs}
     if optimize:
-        morph_dict["optimizer"] = get_adam_optimizer()
+        morph_dict["optimizer"] = get_mala_optimizer()
     return morph_dict
 
 def get_morph_direct_particle(mode="mass", mass=[1.0]*64*44, x=[[0.0,0.0]]*64*44):
@@ -115,7 +118,7 @@ def get_morph_direct_particle(mode="mass", mass=[1.0]*64*44, x=[[0.0,0.0]]*64*44
             'mass':mass,
             'x':x
         },
-        'optimizer': get_adam_optimizer()
+        'optimizer': get_mala_optimizer()
     }
 
 # standard rectangle robot without any holes. No shape optimization will occur.
@@ -127,7 +130,7 @@ def get_morph_default_particle():
 def get_act_default_mixed_sine(optimize=True):
     act_dict =  { "name":"DefaultMixedSineActuatorModel"}
     if optimize:
-        act_dict["optimizer"] = get_adam_optimizer()
+        act_dict["optimizer"] = get_mala_optimizer()
     return act_dict
 
 def get_act_rand_direct_circle_sine_only(hole_count=1, optimize=True, actuation_omega=40.0):
@@ -169,7 +172,7 @@ def get_act_direct_circle(hole_x_sine=[0.1],
                 }
             }
     if optimize:
-        act_dict["optimizer"] = get_adam_optimizer()
+        act_dict["optimizer"] = get_mala_optimizer()
     return act_dict
 
 

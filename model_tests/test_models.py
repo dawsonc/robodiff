@@ -71,7 +71,7 @@ def get_constrained_actuation_sim(n_patches=64, epochs=10):
                     "act_loc":act_loc.tolist(),
                     "hole_size":morph_hole_sizes,
                     },
-                "optimizer":get_adam_optimizer(),
+                "optimizer":get_mala_optimizer(),
                 "actPatchSize":act_patch_size,
                 "wallThickness":1/64,
                 }

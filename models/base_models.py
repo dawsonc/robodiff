@@ -6,6 +6,7 @@ import pickle
 import base64
 
 from .utils import sanitize_genome
+from samplers.mala import MALAOptimizer
 
 class BaseModel(object):
     """
@@ -84,6 +85,8 @@ class BaseModel(object):
             optimizerLR = self._optimizer["lr"]
             if (optimizerName == "Adam"):
                 self._optimizer = torch.optim.Adam(optimizerGenome, lr=optimizerLR)
+            elif (optimizerName == "MALA"):
+                self._optimizer = MALAOptimizer(optimizerGenome, lr=optimizerLR, loss_scale=self._optimizer["loss_scale"])
             else:
                 raise NotImplementedError("Base Model does not support generating an optimizer of type other than Adam")
 
@@ -116,9 +119,9 @@ class BaseModel(object):
     """
     Perform an optimization step if applicable.
     """
-    def step(self):
+    def step(self, closure=None):
         if self._optimizer is not None:
-            self._optimizer.step()
+            self._optimizer.step(closure)
 
     """
     Return dictionary of data needed to generate a robot with this model.

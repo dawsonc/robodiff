@@ -213,8 +213,8 @@ class DirectCircleMorphModel(BaseMorphModel):
             'mass':output_t.detach().cpu().numpy()
         }
 
-    def step(self):
-        super().step()
+    def step(self, closure=None):
+        super().step(closure)
         if self._optimizer is not None and self._reset_patches:
             with torch.no_grad():
                 hs = self._genome["hole_size"]

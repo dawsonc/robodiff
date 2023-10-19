@@ -314,7 +314,7 @@ def clear_v_avg(t: ti.i32):
 
 @ti.kernel
 def compute_loss(steps_offset: ti.i32, steps: ti.i32):
-    loss[None] =  x_avg[steps_offset][0] - x_avg[steps-1][0]
+    loss[None] = 1000.0 * (x_avg[steps_offset][0] - x_avg[steps-1][0])
     
 @ti.kernel
 def compute_jump_loss(steps_offset: ti.i32, steps: ti.i32):

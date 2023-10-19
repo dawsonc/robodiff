@@ -103,8 +103,8 @@ class DirectCircleActuatorModel(BaseActuationModel):
 
         return super().generate()
 
-    def step(self):
-        super().step()
+    def step(self, closure=None):
+        super().step(closure)
 
         if self._optimizer is not None and self._reset_patches:
             with torch.no_grad():

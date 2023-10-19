@@ -260,7 +260,7 @@ def simulate(simModel,  enable_gui=True, epoch_idx=None, object_weight=0.25,  **
             'loss':l,
         }, open(f"{FIGURE_DATA_DIR}/{fname}", "wb"))
 
-    if args.gui and ( epoch_idx is None or epoch_idx in [0, 10,25, 50]) and not is_in_cluster(): # and enable_gui # epoch_idx < 10 or
+    if args.gui and ( epoch_idx is None or epoch_idx in [0, 10,25, 50]) and not is_in_cluster() and enable_gui: # epoch_idx < 10 or
         vis_title = ""
         if "title" in kwargs:
             vis_title = kwargs["title"]
@@ -311,7 +311,7 @@ def run_optimization(simModel,
     optimizer = GDOptimizer(simModel,
                     simulate_lambda,
                     gui_handler = gui_handler,
-                    results_handler = results_handler
+                    results_handler = results_handler,
                 )
 
     return optimizer.optimize(disable_optimization)

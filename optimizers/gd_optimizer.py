@@ -8,16 +8,20 @@ import IPython
 import robodiff_startup as didv
 class GDOptimizer(Optimizer):
     
-    def __init__(self,
-                    simModel,
-                    simulate,
-                    gui_handler = None,
-                    results_handler = None):
+    def __init__(
+            self,
+            simModel,
+            simulate,
+            gui_handler = None,
+            results_handler = None,
+            use_closure: bool = True,
+        ):
         super().__init__(simModel, simulate)
         self._scene = simModel.get_scene()
         self._gui_handler = gui_handler
         self._results_handler = results_handler
         self._ROBOT_ASPECT_RATIO = self._scene.robot_aspect_ratio
+        self.use_closure = use_closure
 
         self._epochs = self._simModel.get_epoch_count()
         self._results_dict = None
@@ -77,13 +81,23 @@ class GDOptimizer(Optimizer):
 
 
         if not disable_optimization:
-                self._simModel.step()
+                if self.use_closure:
+                    def closure():
+                        self._simModel.zero_grad()
+                        results_dict = self._simulate(enable_gui=False, epoch_idx = idx)
+                        return results_dict['loss']
+
+                    self._simModel.step(closure)
+                else:
+                    self._simModel.step()
 
         return msg 
     
     def optimize(self, disable_optimization):
         self._scene.reset()
 
+        # TODO where do you change this for real?
+        self._epochs = 100
         tq = range(self._epochs)
         
         for idx in tq:

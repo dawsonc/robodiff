@@ -121,12 +121,12 @@ class SimulationModel(object):
             self.actuationModel.zero_grad()
 
 
-    def step(self):
+    def step(self, closure=None):
         if self.unifiedModel is not None:
-            self.unifiedModel.step()
+            self.unifiedModel.step(closure)
         else:
-            self.morphModel.step()
-            self.actuationModel.step()
+            self.morphModel.step(closure)
+            self.actuationModel.step(closure)
 
     def get_export_info(self, **kwargs):
         info = {**kwargs}

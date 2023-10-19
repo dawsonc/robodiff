@@ -105,11 +105,11 @@ class UnifiedSim2RealModel(BaseUnifiedModel):
         self.dim = 2
         self._omega = 40.0 / (np.pi * 2)
 
-    def step(self):
-        # self._actModel.step()
+    def step(self, closure=None):
+        # self._actModel.step(closure)
 
         if self._optimizer is not None:
-            self._optimizer.step()
+            self._optimizer.step(closure)
         
 
     def generate_mass(self):
