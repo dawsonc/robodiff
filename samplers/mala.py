@@ -1,5 +1,5 @@
-from math import sqrt
 from functools import reduce
+from math import sqrt
 
 import torch
 from torch.optim import Optimizer
@@ -11,11 +11,11 @@ class MALAOptimizer(Optimizer):
     Implementation based on torch.optim.LBFGS.
     """
 
-    def __init__(self, params, lr=1e-3, loss_scale=1.0):
+    def __init__(self, params, lr=1e-3):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
 
-        defaults = dict(lr=lr, loss_scale=loss_scale)
+        defaults = dict(lr=lr)
         super(MALAOptimizer, self).__init__(params, defaults)
 
         if len(self.param_groups) != 1:
@@ -51,18 +51,16 @@ class MALAOptimizer(Optimizer):
         new_loss,
         new_grad,
         lr,
-        loss_scale,
     ):
         """Compute the probability of accepting a move from old state to new state."""
         # The likelihood is e^-loss, so the loglikelihood is -loss
         log_likelihood_ratio = old_loss - new_loss  # log(e^-new_loss / e^-old_loss)
-        log_likelihood_ratio *= loss_scale
 
         log_transition_old_to_new = -torch.norm(
-            new_state - old_state + lr * loss_scale * old_grad
+            new_state - old_state + lr * old_grad
         ) ** 2 / (4 * lr)
         log_transition_new_to_old = -torch.norm(
-            old_state - new_state + lr * loss_scale * new_grad
+            old_state - new_state + lr * new_grad
         ) ** 2 / (4 * lr)
         log_transition_ratio = log_transition_new_to_old - log_transition_old_to_new
 
@@ -100,6 +98,7 @@ class MALAOptimizer(Optimizer):
         # Make sure that the closure is always evaluated with gradients
         closure = torch.enable_grad()(closure)
 
+        # MALA
         # Re-use loss and gradients from a previous step if they are available
         if "loss" in self._state and "grad" in self._state:
             loss = self._state["loss"]
@@ -114,15 +113,11 @@ class MALAOptimizer(Optimizer):
         group = self.param_groups[0]
         lr = group["lr"]
 
-        # Update the parameters using Langevin dynamics, but disable noise if we've run
-        # enough steps (quenching)
+        # Update the parameters using Langevin dynamics
         noise = torch.randn_like(grad)
-        if self._state["steps"] >= 90:
-            noise *= 0.0
 
-        loss_scale = 1.0 # torch.norm(noise) * group["loss_scale"] # TODO
         old_state = torch.cat([p.data.detach().clone() for p in group["params"]])
-        proposed_move = -lr * loss_scale * grad + sqrt(2 * lr) * noise
+        proposed_move = -lr * grad + sqrt(2 * lr) * noise
         self._add_to_params(proposed_move)
         new_state = torch.cat([p.data.detach().clone() for p in group["params"]])
 
@@ -138,9 +133,8 @@ class MALAOptimizer(Optimizer):
             new_loss,
             new_grad,
             lr,
-            loss_scale,
         )
-        if torch.rand(1).item() < acceptance_prob or self._state["steps"] >= 90:
+        if torch.rand(1).item() < acceptance_prob:
             # Accept the update
             loss = new_loss
             self._state["num_accepts"] += 1
@@ -154,6 +148,8 @@ class MALAOptimizer(Optimizer):
 
         self._state["steps"] += 1
 
-        print(f"Acceptance rate: {self._state['num_accepts'] / self._state['steps']:.2}")
+        print(
+            f"Acceptance rate: {self._state['num_accepts'] / self._state['steps']:.2}"
+        )
 
         return loss

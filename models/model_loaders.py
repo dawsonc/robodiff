@@ -1,64 +1,68 @@
-import IPython
-import numpy as np
-from numpy.lib.arraysetops import isin
-import pprint
-import pathlib
-import h5py
-
-import matplotlib.colors
-from PIL import Image
-from io import BytesIO
 import base64
+import pathlib
+import pprint
+from io import BytesIO
 
-
+import h5py
+import IPython
+import matplotlib.colors
+import numpy as np
 from models import *
 from models.base_models import BaseActuationModel, BaseMorphModel, BaseUnifiedModel
-
 from models.direct_circle_actuator_model import DirectCircleActuatorModel
 from models.direct_circle_morph_model import DirectCircleMorphModel
-from models.mixed_sine_actuator_model import MixedSineActuatorModel, DefaultMixedSineActuatorModel
-from models.direct_particle_morph_model import DirectParticleMorphModel, DefaultParticleMorphModel
+from models.direct_particle_morph_model import (
+    DefaultParticleMorphModel,
+    DirectParticleMorphModel,
+)
+from models.mixed_sine_actuator_model import (
+    DefaultMixedSineActuatorModel,
+    MixedSineActuatorModel,
+)
 from models.sim2real_model import UnifiedSim2RealModel
+from numpy.lib.arraysetops import isin
+from PIL import Image
 
 ModelMapper = {
-    "MixedSineActuatorModel" : MixedSineActuatorModel,
-    "DirectCircleActuatorModel" : DirectCircleActuatorModel,
+    "MixedSineActuatorModel": MixedSineActuatorModel,
+    "DirectCircleActuatorModel": DirectCircleActuatorModel,
     "DefaultMixedSineActuatorModel": DefaultMixedSineActuatorModel,
-    "DirectCircleMorphModel" : DirectCircleMorphModel,
-    "DirectParticleMorphModel" : DirectParticleMorphModel,
+    "DirectCircleMorphModel": DirectCircleMorphModel,
+    "DirectParticleMorphModel": DirectParticleMorphModel,
     "DefaultParticleMorphModel": DefaultParticleMorphModel,
-    "UnifiedSim2RealModel":UnifiedSim2RealModel
+    "UnifiedSim2RealModel": UnifiedSim2RealModel,
 }
 
 
 class SimulationModel(object):
-    def __init__(self, 
-                    scene=None,
-                    steps=1024,
-                    pre_grads_steps=0,
-                    internalDamping=30.0,
-                    globalDamping=2.0,
-                    enableDamping=1,
-                    baseE = 20.0,
-                    friction=0.5,
-                    gravityStrength=3.8,
-                    actuationStrength=4.0,
-                    actuationSharpness=1.0,
-                    actuationMaxSignal=100000.0,
-                    act_model="y",
-                    actuationProportionalToMass=1,
-                    epochs=1,
-                    unifiedModel=None,
-                    morphModel=None,
-                    actuationModel=None,
-                    loss_mode="locomotion_flat",
-                    loss_mode_includes="body",
-                    work_guid = None,
-                    save_sim_for_vis = None,
-                    requires_taichi_grads = True,
-                    simulation_inclusion_threshold=0.1,
-                    **kwargs):
-        
+    def __init__(
+        self,
+        scene=None,
+        steps=1024,
+        pre_grads_steps=0,
+        internalDamping=30.0,
+        globalDamping=2.0,
+        enableDamping=1,
+        baseE=20.0,
+        friction=0.5,
+        gravityStrength=3.8,
+        actuationStrength=4.0,
+        actuationSharpness=1.0,
+        actuationMaxSignal=100000.0,
+        act_model="y",
+        actuationProportionalToMass=1,
+        epochs=1,
+        unifiedModel=None,
+        morphModel=None,
+        actuationModel=None,
+        loss_mode="locomotion_flat",
+        loss_mode_includes="body",
+        work_guid=None,
+        save_sim_for_vis=None,
+        requires_taichi_grads=True,
+        simulation_inclusion_threshold=0.1,
+        **kwargs,
+    ):
         self.scene = scene
         self.steps = steps
         self.pre_grads_steps = pre_grads_steps
@@ -89,7 +93,7 @@ class SimulationModel(object):
         self.kwargs = kwargs
 
         self.refreshModels()
-  
+
     def get_kwarg(self, k):
         if k in self.__dict__:
             return self.__dict__[k]
@@ -102,12 +106,12 @@ class SimulationModel(object):
             return self.kwargs["description_str"]
         else:
             return ""
-            
+
     def get_summary_string(self):
-        self_desc = "" 
+        self_desc = ""
         if "description_str" in self.kwargs:
             self_desc = f"{self.kwargs['description_str']}\n"
-            
+
         if self.unifiedModel is not None:
             return f"{self_desc}\nunified: {self.unifiedModel.get_summary_string()}"
         else:
@@ -120,13 +124,19 @@ class SimulationModel(object):
             self.morphModel.zero_grad()
             self.actuationModel.zero_grad()
 
-
     def step(self, closure=None):
         if self.unifiedModel is not None:
             self.unifiedModel.step(closure)
         else:
             self.morphModel.step(closure)
             self.actuationModel.step(closure)
+
+    def fine_tune_step(self, closure=None):
+        if self.unifiedModel is not None:
+            self.unifiedModel.fine_tune_step(closure)
+        else:
+            self.morphModel.fine_tune_step(closure)
+            self.actuationModel.fine_tune_step(closure)
 
     def get_export_info(self, **kwargs):
         info = {**kwargs}
@@ -139,17 +149,16 @@ class SimulationModel(object):
         return info
 
     def get_genome(self, sanitize=False):
-        if self.unifiedModel is not None:            
+        if self.unifiedModel is not None:
             return {
-                "unifiedGenome":self.unifiedModel.get_genome(sanitize=sanitize),
+                "unifiedGenome": self.unifiedModel.get_genome(sanitize=sanitize),
             }
         else:
             return {
-                "actuationGenome":self.actuationModel.get_genome(sanitize=sanitize),
-                "morphGenome":self.morphModel.get_genome(sanitize=sanitize),
+                "actuationGenome": self.actuationModel.get_genome(sanitize=sanitize),
+                "morphGenome": self.morphModel.get_genome(sanitize=sanitize),
             }
 
-        
     def get_scene(self):
         return self.scene
 
@@ -172,7 +181,6 @@ class SimulationModel(object):
                     else:
                         group.create_dataset(key, data=value)
 
-        
     def refreshModels(self):
         """
         Checks if the morphModel  & or the actuationModel are fully setup or not, and parses them if needed.
@@ -182,27 +190,32 @@ class SimulationModel(object):
         morphModel = self.morphModel
         actuationModel = self.actuationModel
 
-        if (isinstance(unifiedModel, dict)):
+        if isinstance(unifiedModel, dict):
             unifiedModelFactory = ModelMapper[unifiedModel["name"]]
             try:
-                self.unifiedModel = unifiedModelFactory(**unifiedModel, **self.kwargs, scene=self.scene)
+                self.unifiedModel = unifiedModelFactory(
+                    **unifiedModel, **self.kwargs, scene=self.scene
+                )
             except Exception as e:
                 print(e)
                 IPython.embed()
 
-        if (isinstance(morphModel, dict)):
+        if isinstance(morphModel, dict):
             morphModelFactory = ModelMapper[morphModel["name"]]
             try:
-                self.morphModel = morphModelFactory(**morphModel, **self.kwargs, scene=self.scene)
+                self.morphModel = morphModelFactory(
+                    **morphModel, **self.kwargs, scene=self.scene
+                )
             except Exception as e:
                 print(e)
                 IPython.embed()
 
-
-        if (isinstance(actuationModel, dict)):
+        if isinstance(actuationModel, dict):
             actuationModelFactory = ModelMapper[actuationModel["name"]]
             try:
-                self.actuationModel = actuationModelFactory(**actuationModel, **self.kwargs, scene=self.scene)
+                self.actuationModel = actuationModelFactory(
+                    **actuationModel, **self.kwargs, scene=self.scene
+                )
             except Exception as e:
                 print(e)
                 IPython.embed()
@@ -212,9 +225,14 @@ class SimulationModel(object):
         actModelExists = isinstance(self.morphModel, BaseMorphModel)
 
         # check that we have a valid model
-        assert unifiedModelExists or (morphModelExists and actModelExists), "must use either unified model or both act and morph models."
-        
+        assert unifiedModelExists or (
+            morphModelExists and actModelExists
+        ), "must use either unified model or both act and morph models."
+
         # check that we do not have any extra models.
-        assert (self.morphModel is None) == (self.actuationModel is None), "if morph model is used, act model must also be used"
-        assert (self.unifiedModel is None) != (self.morphModel is None), "if unified model is used, morphModel should not be used"
-        
+        assert (self.morphModel is None) == (
+            self.actuationModel is None
+        ), "if morph model is used, act model must also be used"
+        assert (self.unifiedModel is None) != (
+            self.morphModel is None
+        ), "if unified model is used, morphModel should not be used"
